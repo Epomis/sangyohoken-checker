@@ -1,0 +1,867 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Users, Briefcase, Droplet, ClipboardCheck, UserCheck, ShieldCheck, Factory, Building,
+  HardHat, FlaskConical, Stethoscope, FileText, BellRing, Info, Lightbulb, CheckCircle, X
+} from 'lucide-react';
+
+// Tailwind CSS is assumed to be available
+
+// 簡易Markdownパーサー
+const parseSimpleMarkdown = (markdown) => {
+  const lines = markdown.split('\n');
+  let htmlLines = [];
+  let inList = false;
+
+  lines.forEach(line => {
+    // 行頭の空白をトリムしてMarkdown構文を正確に識別
+    const trimmedLine = line.trim();
+
+    // 見出しの処理
+    if (trimmedLine.startsWith('### ')) {
+      if (inList) { htmlLines.push('</ul>'); inList = false; } // リストが終了したら閉じる
+      htmlLines.push(`<h3>${trimmedLine.substring(4)}</h3>`);
+    } else if (trimmedLine.startsWith('## ')) {
+      if (inList) { htmlLines.push('</ul>'); inList = false; }
+      htmlLines.push(`<h2>${trimmedLine.substring(3)}</h2>`);
+    } else if (trimmedLine.startsWith('# ')) {
+      if (inList) { htmlLines.push('</ul>'); inList = false; }
+      htmlLines.push(`<h1>${trimmedLine.substring(2)}</h1>`);
+    }
+    // リストの処理
+    else if (trimmedLine.startsWith('* ')) {
+      if (!inList) {
+        htmlLines.push('<ul>'); // 新しいリストを開始
+        inList = true;
+      }
+      htmlLines.push(`<li>${trimmedLine.substring(2)}</li>`);
+    }
+    // 空行の処理（段落の区切り、またはリスト/ブロックの終了）
+    else if (trimmedLine === '') {
+      if (inList) {
+        htmlLines.push('</ul>'); // リストが終了したら閉じる
+        inList = false;
+      }
+      htmlLines.push(''); // 空行を保持し、後で段落の区切りとして利用
+    }
+    // その他のテキスト（段落またはインライン要素）
+    else {
+      if (inList) { htmlLines.push('</ul>'); inList = false; } // リストが終了したら閉じる
+      htmlLines.push(trimmedLine);
+    }
+  });
+
+  // Markdownがリストで終わる場合にリストを閉じることを保証
+  if (inList) {
+    htmlLines.push('</ul>');
+  }
+
+  // 収集した行を結合し、太字と段落のラッピングを処理
+  let finalHtml = htmlLines.join('\n');
+
+  // 太字の処理
+  finalHtml = finalHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // 段落のラッピング: 二重改行でブロックを分割し、ブロックレベル要素でないものを<p>でラップ
+  const blocks = finalHtml.split('\n\n'); // 段落の区切りで分割
+  let wrappedBlocks = [];
+  blocks.forEach(block => {
+    if (!block.trim()) return; // 空のブロックはスキップ
+
+    // ブロックが既に既知のブロックレベルHTMLタグで始まっているかチェック
+    // これにより、見出しやリストが<p>タグで二重にラップされるのを防ぐ
+    if (block.startsWith('<h1') || block.startsWith('<h2') || block.startsWith('<h3') ||
+        block.startsWith('<ul>') || block.startsWith('<li>')) {
+      wrappedBlocks.push(block);
+    } else {
+      // 段落内の単一改行を<br>に変換
+      const paragraphContent = block.replace(/\n/g, '<br>');
+      wrappedBlocks.push(`<p>${paragraphContent}</p>`);
+    }
+  });
+
+  return wrappedBlocks.join('\n');
+};
+
+
+// Privacy Policy Content (Markdown)
+const PRIVACY_POLICY_CONTENT = `
+# プライバシーポリシー
+
+このプライバシーポリシーは、D2C産業医（以下「当社」といいます）が提供する「産業保健要件 簡易確認アプリ」（以下「本アプリ」といいます）における、お客様の個人情報の取得、利用、管理について定めるものです。
+
+## 1. 取得する情報
+
+本アプリは、お客様の個人情報を直接的に取得・保存することはありません。本アプリに入力された従業員数、業種、有害業務の有無などの情報は、お客様のブラウザ上でのみ処理され、当社サーバーには送信、保存されません。
+
+## 2. 情報の利用目的
+
+本アプリは、お客様が入力した情報を基に、労働安全衛生法に基づく産業保健の要件を判定し、その結果を表示するためにのみ情報を利用します。この情報は、お客様のブラウザ内で完結する処理にのみ使用され、その他の目的で利用されることはありません。
+
+## 3. 情報の第三者提供
+
+本アプリは、お客様の個人情報を一切取得しないため、第三者に提供することもありません。
+
+## 4. 免責事項
+
+本アプリは、労働安全衛生法および関連法令に基づく一般的な情報提供を目的としており、その正確性、完全性、最新性、特定の目的への適合性について、いかなる保証も行いません。本アプリの利用により生じたいかなる損害についても、当社は一切の責任を負いません。本アプリで得られた情報は、あくまで参考情報としてご利用いただき、最終的な判断や具体的な措置については、必ず専門家にご相談いただくか、最新の法令をご確認ください。
+
+## 5. プライバシーポリシーの変更
+
+当社は、必要に応じて本プライバシーポリシーを改定することがあります。改定されたプライバシーポリシーは、本アプリ内に掲載された時点から効力を生じるものとします。
+
+## 6. お問い合わせ
+
+本プライバシーポリシーに関するお問い合わせは、D2C産業医のウェブサイト（https://workplace-healthcare.com/）よりご連絡ください。
+
+**制定日: 2025年7月20日**
+`;
+
+// Terms of Service Content (Markdown)
+const TERMS_OF_SERVICE_CONTENT = `
+# 利用規約
+
+この利用規約は、D2C産業医（以下「当社」といいます）が提供する「産業保健要件 簡易確認アプリ」（以下「本アプリ」といいます）の利用に関する条件を定めるものです。本アプリをご利用になる前に、本規約をよくお読みください。本アプリのご利用を開始された場合、お客様は本規約に同意したものとみなされます。
+
+## 1. 本アプリの目的
+
+本アプリは、労働安全衛生法および関連法令に基づく産業保健の一般的な要件を簡易的に確認するための情報提供ツールです。具体的な法的助言や専門的なコンサルティングを提供するものではありません。
+
+## 2. 利用上の注意
+
+* 本アプリで表示される情報は、入力されたデータに基づき、一般的な法令解釈を適用したものです。個別の事業場の状況や、最新の法令改正、行政解釈によっては、異なる結果となる場合があります。
+
+* 本アプリの情報は、あくまで参考としてご利用ください。最終的な法令遵守の判断や、具体的な産業保健体制の構築については、必ず労働基準監督署、産業医、弁護士、社会保険労務士などの専門家にご相談いただくか、最新の法令をご確認ください。
+
+* 本アプリの利用は、お客様ご自身の責任において行ってください。
+
+## 3. 免責事項
+
+当社は、本アプリの提供にあたり、以下の事項について、いかなる保証も行いません。また、本アプリの利用によりお客様に生じたいかなる損害についても、当社は一切の責任を負いません。
+
+* 本アプリで提供される情報の正確性、完全性、信頼性、有用性、特定の目的への適合性。
+
+* 本アプリが中断されないこと、エラーがないこと、または欠陥が修正されること。
+
+* 本アプリを通じて提供される情報が、お客様の特定のニーズや状況に合致すること。
+
+* 本アプリの利用により、お客様が法令違反に問われたり、損害を被ったりしないこと。
+
+## 4. 知的財産権
+
+本アプリに関する著作権、特許権、商標権その他一切の知的財産権は、当社または正当な権利を有する第三者に帰属します。お客様は、本アプリを、私的利用の範囲を超えて複製、改変、頒布、公衆送信、その他の方法で利用することはできません。
+
+## 5. 禁止事項
+
+お客様は、本アプリの利用にあたり、以下の行為を行ってはなりません。
+
+* 法令または公序良俗に違反する行為。
+
+* 本アプリの運営を妨害する行為。
+
+* 当社または第三者の知的財産権、プライバシー権、その他の権利を侵害する行為。
+
+* 本アプリを、本来の目的以外で利用する行為。
+
+* その他、当社が不適切と判断する行為。
+
+## 6. 利用規約の変更
+
+当社は、お客様に事前の通知なく、本規約を任意に改定できるものとします。改定後の利用規約は、本アプリ内に掲載された時点から効力を生じるものとします。本規約の変更後も本アプリを継続してご利用になった場合、お客様は変更後の規約に同意したものとみなされます。
+
+## 7. 準拠法および管轄
+
+本規約の準拠法は日本法とします。本アプリの利用に関する一切の紛争については、東京地方裁判所を第一審の専属的合意管轄裁判所とします。
+
+## 8. お問い合わせ
+
+本利用規約に関するお問い合わせは、D2C産業医のウェブサイト（https://workplace-healthcare.com/）よりご連絡ください。
+
+**制定日: 2025年7月20日**
+`;
+
+
+// Data for industries and hazardous operations based on the provided markdown
+const INDUSTRIES = [
+  { id: 'other', name: 'その他の業種', type: 'other' },
+  { id: 'forestry', name: '林業', type: 'hazardous-safety' },
+  { id: 'mining', name: '鉱業', type: 'hazardous-safety' },
+  { id: 'construction', name: '建設業', type: 'hazardous-safety-construction' }, // Specific for Safety Officer and Safety/Health Manager
+  { id: 'transport', name: '運送業', type: 'hazardous-safety' },
+  { id: 'cleaning', name: '清掃業', type: 'hazardous-safety' },
+  { id: 'manufacturing', name: '製造業（物の加工業を含む）', type: 'hazardous-safety-manufacturing' }, // Specific for Safety Officer
+  { id: 'electricity', name: '電気業', type: 'hazardous-safety' },
+  { id: 'gas', name: 'ガス業', type: 'hazardous-safety' },
+  { id: 'heat_supply', name: '熱供給業', type: 'hazardous-safety' },
+  { id: 'water_supply', name: '水道業', type: 'hazardous-safety' },
+  { id: 'communication', name: '通信業', type: 'hazardous-safety' },
+  { id: 'wholesale_general', name: '各種商品卸売業', type: 'hazardous-safety' },
+  { id: 'wholesale_furniture', name: '家具・建具・じゅう器等卸売業', type: 'hazardous-safety' },
+  { id: 'retail_general', name: '各種商品小売業', type: 'hazardous-safety' },
+  { id: 'retail_furniture', name: '家具・建具・じゅう器小売業', type: 'hazardous-safety' },
+  { id: 'retail_fuel', name: '燃料小売業', type: 'hazardous-safety' },
+  { id: 'hotel', name: '旅館業', type: 'hazardous-safety' },
+  { id: 'golf', name: 'ゴルフ場業', type: 'hazardous-safety' },
+  { id: 'auto_repair', name: '自動車整備業', type: 'hazardous-safety' },
+  { id: 'machine_repair', type: 'hazardous-safety' },
+  // Additional industries with specific Safety Officer thresholds
+  { id: 'organic_chemical_manufacturing', name: '有機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
+  { id: 'petroleum_manufacturing', name: '石油製品製造業', type: 'hazardous-safety-manufacturing' },
+  { id: 'inorganic_chemical_manufacturing', name: '無機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
+  { id: 'chemical_fertilizer_manufacturing', type: 'hazardous-safety-manufacturing' },
+  { id: 'road_freight_transport', name: '道路貨物運送業', type: 'hazardous-safety-transport' },
+  { id: 'port_transport', name: '港湾運送業', type: 'hazardous-safety-transport' },
+  { id: 'paper_pulp_manufacturing', name: '紙・パルプ製造業', type: 'hazardous-safety-manufacturing' },
+  { id: 'steel_manufacturing', name: '鉄鋼業', type: 'hazardous-safety-manufacturing' },
+  { id: 'shipbuilding', name: '造船業', type: 'hazardous-safety-shipbuilding' }, // Specific for Safety Officer and Safety/Health Manager
+];
+
+const HAZARDOUS_OPERATIONS = [
+  // 特定業務従事者健康診断 (Specific Task Health Examination)
+  { id: 'high_temp', name: '多量の高熱物体取扱業務、著しく暑熱な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'electricity', 'gas', 'heat_supply', 'water_supply', 'mining', 'construction'] },
+  { id: 'low_temp', name: '多量の低温物体取扱業務、著しく寒冷な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'wholesale_general', 'retail_general'] },
+  { id: 'heavy_lifting', name: '重量物を取り扱う作業', requirements: ['specific_task_exam'], related_industries: ['construction', 'transport', 'manufacturing', 'port_transport'] },
+  { id: 'high_place', name: '高所作業', requirements: ['specific_task_exam'], related_industries: ['construction', 'electricity', 'communication'] },
+  // 特殊健康診断 (Special Health Examination) - Note: Some also require specific_task_exam
+  { id: 'radiation', name: 'ラジウム放射線、エックス線その他の有害放射線にさらされる業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['manufacturing', 'mining', 'electricity'] },
+  { id: 'dust', name: '有害な粉じんを取り扱う業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['mining', 'construction', 'manufacturing', 'paper_pulp_manufacturing', 'steel_manufacturing', 'cleaning'] },
+  { id: 'high_pressure', name: '高気圧業務', requirements: ['special_exam'], related_industries: ['construction', 'mining'] },
+  { id: 'specified_chemical', name: '特定化学物質業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'organic_chemical_manufacturing', 'petroleum_manufacturing', 'inorganic_chemical_manufacturing', 'chemical_fertilizer_manufacturing', 'cleaning'] },
+  { id: 'asbestos', name: '石綿業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['construction', 'manufacturing'] },
+  { id: 'lead', name: '鉛業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing'] },
+  { id: 'organic_solvent', name: '有機溶剤業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'auto_repair', 'machine_repair'] },
+  { id: 'dental_erosion', name: '歯牙酸蝕症（歯またはその支持組織に有害なガス・蒸気・粉じんを取り扱う業務）', requirements: ['special_exam'], related_industries: ['manufacturing'] },
+  { id: 'arc_welding', name: '金属アーク溶接等作業', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'construction', 'shipbuilding', 'steel_manufacturing', 'auto_repair', 'machine_repair'] },
+
+  // 作業主任者 (Operations Chief) - Note: Some also require special_exam
+  { id: 'high_pressure_indoor', name: '高圧室内作業', requirements: ['operations_chief'], related_industries: ['construction', 'mining'] },
+  { id: 'gas_welding', name: 'ガス溶接作業', requirements: ['operations_chief'], related_industries: ['manufacturing', 'construction', 'auto_repair', 'machine_repair'] },
+  { id: 'forestry_cable', name: '林業架線作業', requirements: ['operations_chief'], related_industries: ['forestry'] },
+  { id: 'boiler_handling', name: 'ボイラー取扱作業', requirements: ['operations_chief'], related_industries: ['manufacturing', 'electricity', 'gas', 'heat_supply', 'water_supply', 'hotel'] },
+  { id: 'xray_operations', name: 'エックス線作業', requirements: ['operations_chief'], related_industries: ['manufacturing', 'construction'] },
+  { id: 'gamma_ray_photography', name: 'ガンマ線透過写真撮影作業', requirements: ['operations_chief'], related_industries: ['construction', 'manufacturing'] },
+  { id: 'wood_processing_machine', name: '木材加工用機械作業', requirements: ['operations_chief'], related_industries: ['manufacturing', 'construction'] },
+  { id: 'press_machine', name: 'プレス機械作業', requirements: ['operations_chief'], related_industries: ['manufacturing'] },
+  { id: 'drying_equipment', name: '乾燥設備作業', requirements: ['operations_chief'], related_industries: ['manufacturing'] },
+  { id: 'concrete_crusher', name: 'コンクリート破砕器作業', requirements: ['operations_chief'], related_industries: ['construction', 'mining'] },
+  { id: 'excavation_earth_retaining', name: '地山の掘削及び土止め支保工作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'tunnel_excavation', name: 'ずい道等の掘削等作業', requirements: ['operations_chief'], related_industries: ['construction', 'mining'] },
+  { id: 'tunnel_lining', name: 'ずい道等の覆工作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'quarrying_excavation', name: '採石のための掘削作業', requirements: ['operations_chief'], related_industries: ['mining', 'construction'] },
+  { id: 'stacking', name: 'はい作業', requirements: ['operations_chief'], related_industries: ['transport', 'wholesale_general', 'wholesale_furniture', 'retail_general', 'retail_furniture', 'retail_fuel', 'manufacturing'] },
+  { id: 'ship_cargo_handling', name: '船内荷役作業', requirements: ['operations_chief'], related_industries: ['port_transport'] },
+  { id: 'formwork_support_assembly', name: '型枠支保工組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'scaffolding_assembly', name: '足場の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'steel_frame_assembly', name: '建築物等の鉄骨の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'steel_bridge_erection', name: '鋼橋架設等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'wooden_building_assembly', name: '木造建築物の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'concrete_structure_demolition', name: 'コンクリート造の工作物の解体等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'concrete_bridge_erection', name: 'コンクリート橋架設等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
+  { id: 'pressure_vessel_handling', name: '第一種圧力容器取扱作業', requirements: ['operations_chief'], related_industries: ['manufacturing', 'electricity', 'gas', 'heat_supply', 'water_supply'] },
+  { id: 'oxygen_deficient_type1', name: '酸素欠乏危険作業(第1種)', requirements: ['operations_chief'], related_industries: ['construction', 'mining', 'water_supply', 'cleaning'] },
+  { id: 'oxygen_deficient_type2', name: '酸素欠乏危険作業(第2種)', requirements: ['operations_chief'], related_industries: ['construction', 'mining', 'water_supply', 'cleaning'] },
+];
+
+function App() {
+  const [employeeCount, setEmployeeCount] = useState(0);
+  const [industryType, setIndustryType] = useState('other');
+  const [hasHazardousOperations, setHasHazardousOperations] = useState(false);
+  const [selectedHazardousOperations, setSelectedHazardousOperations] = useState([]);
+  const [results, setResults] = useState(null);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTermsOfService, setShowTermsOfService] = useState(false);
+
+  // Function to determine if an industry is "hazardous-safety" type
+  const isHazardousSafetyIndustry = (industryId) => {
+    const industry = INDUSTRIES.find(ind => ind.id === industryId);
+    return industry && (
+      industry.type.startsWith('hazardous-safety') ||
+      industry.type === 'hazardous-safety-construction' ||
+      industry.type === 'hazardous-safety-manufacturing' ||
+      industry.type === 'hazardous-safety-transport' ||
+      industry.type === 'hazardous-safety-shipbuilding'
+    );
+  };
+
+  // Function to determine if an industry requires Safety Officer based on specific thresholds
+  const requiresSafetyOfficerByIndustry = (count, industryId) => {
+    switch (industryId) {
+      case 'construction':
+      case 'organic_chemical_manufacturing':
+      case 'petroleum_manufacturing':
+        return count >= 300;
+      case 'inorganic_chemical_manufacturing':
+      case 'chemical_fertilizer_manufacturing':
+      case 'road_freight_transport':
+      case 'port_transport':
+        return count >= 500;
+      case 'paper_pulp_manufacturing':
+      case 'steel_manufacturing':
+      case 'shipbuilding':
+        return count >= 1000;
+      // For other industries listed in 労働安全衛生法施行令第2条第1号及び第2号
+      case 'forestry':
+      case 'mining':
+      case 'transport':
+      case 'cleaning':
+      case 'manufacturing':
+      case 'electricity':
+      case 'gas':
+      case 'heat_supply':
+      case 'water_supply':
+      case 'communication':
+      case 'wholesale_general':
+      case 'wholesale_furniture':
+      case 'retail_general':
+      case 'retail_furniture':
+      case 'retail_fuel':
+      case 'hotel':
+      case 'golf':
+      case 'auto_repair':
+      case 'machine_repair':
+        return count >= 2000;
+      default:
+        return false;
+    }
+  };
+
+  // Function to determine if an industry requires General Safety and Health Manager based on specific thresholds
+  const requiresGeneralSafetyHealthManagerByIndustry = (count, industryId) => {
+    switch (industryId) {
+      case 'forestry':
+      case 'mining':
+      case 'construction':
+      case 'transport':
+      case 'cleaning':
+        return count >= 100;
+      case 'manufacturing':
+      case 'electricity':
+      case 'gas':
+      case 'heat_supply':
+      case 'water_supply':
+      case 'communication':
+        return count >= 300;
+      default:
+        return count >= 1000; // Other industries
+    }
+  };
+
+  // Effect to pre-select hazardous operations based on industry type
+  useEffect(() => {
+    const preSelected = HAZARDOUS_OPERATIONS.filter(op =>
+      op.related_industries.includes(industryType)
+    ).map(op => op.id);
+    setSelectedHazardousOperations(preSelected);
+    setHasHazardousOperations(preSelected.length > 0); // Automatically check the main checkbox if any are pre-selected
+  }, [industryType]);
+
+
+  useEffect(() => {
+    const calculateRequirements = () => {
+      const newResults = {
+        healthExams: [],
+        personnel: [],
+        notes: []
+      };
+
+      // --- 健康診断 (Health Examinations) ---
+
+      // 一般健康診断 (General Health Examination)
+      if (employeeCount >= 1) {
+        newResults.healthExams.push({
+          name: '一般健康診断',
+          description: '常時使用する労働者（正社員、パート・アルバイト等で一定の条件を満たす者を含む）全員に年1回実施が義務付けられています。',
+          frequency: '1年以内ごとに1回',
+          target: '常時使用する労働者全員',
+          icon: <Stethoscope className="text-blue-500" />
+        });
+      }
+
+      // 特定業務従事者健康診断 (Specific Task Health Examination)
+      const hasSpecificTaskOperations = selectedHazardousOperations.some(opId =>
+        HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('specific_task_exam')
+      );
+      if (hasSpecificTaskOperations) {
+        newResults.healthExams.push({
+          name: '特定業務従事者健康診断',
+          description: '労働安全衛生規則第13条第1項第2号に掲げる特定業務に常時従事する労働者（パート・アルバイト含む）に対し、配置替えの際および6ヶ月以内ごとに1回（実質年2回）実施が義務付けられています。一般健康診断に含まれる特別な健康診断です。',
+          frequency: '配置替えの際、および6ヶ月以内ごとに1回',
+          target: '特定業務に常時従事する労働者',
+          icon: <ClipboardCheck className="text-green-500" />
+        });
+      }
+
+      // 特殊健康診断 (Special Health Examination)
+      const hasSpecialExamOperations = selectedHazardousOperations.some(opId =>
+        HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('special_exam')
+      );
+      if (hasSpecialExamOperations) {
+        newResults.healthExams.push({
+          name: '特殊健康診断',
+          description: '特定の有害業務に常時従事する労働者（パート・アルバイト含む）を対象とした、一般健康診断には含まれない特別な健康診断です。原則6ヶ月以内ごとに1回（実質年2回）実施ですが、一部条件で年1回に緩和可能です。',
+          frequency: '雇入れ時、配置替えの際、および6ヶ月以内ごとに1回（一部条件で年1回に緩和可能）',
+          target: '特定の有害業務に常時従事する労働者',
+          icon: <FlaskConical className="text-red-500" />
+        });
+      }
+
+      // --- 産業保健関係者 (Industrial Health Personnel) ---
+
+      // 産業医 (Industrial Doctor)
+      if (employeeCount >= 50) {
+        let industrialDoctorCount = '';
+        let industrialDoctorType = '';
+        if (employeeCount >= 3001) {
+          industrialDoctorCount = '2名以上';
+          industrialDoctorType = '専属産業医';
+        } else if (employeeCount >= 1000) {
+          industrialDoctorCount = '1名以上';
+          industrialDoctorType = '専属産業医';
+        } else if (employeeCount >= 50) {
+          industrialDoctorCount = '1名以上';
+          industrialDoctorType = '嘱託産業医も可';
+        }
+
+        const hazardousEmployeesForIndustrialDoctor = selectedHazardousOperations.some(opId =>
+          HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('special_exam') ||
+          HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('specific_task_exam') // Consider specific tasks too for general hazardous context
+        );
+        if (hazardousEmployeesForIndustrialDoctor && employeeCount >= 500) {
+          industrialDoctorCount = '1名以上';
+          industrialDoctorType = '専属産業医'; // Overrides if hazardous operations apply
+        }
+
+        newResults.personnel.push({
+          name: '産業医',
+          description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する事業場では、${industrialDoctorCount}の産業医を選任する必要があります。${industrialDoctorType}。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
+          icon: <UserCheck className="text-purple-500" />
+        });
+      } else {
+        newResults.notes.push({
+          text: '従業員数が50人未満の場合、産業医の選任義務はありませんが、地域産業保健センターへの相談が推奨されます。',
+          icon: <Info className="text-gray-500" />
+        });
+      }
+
+      // 衛生管理者 (Health Officer)
+      if (employeeCount >= 50) {
+        let healthOfficerCount = 0;
+        if (employeeCount >= 3001) healthOfficerCount = 6;
+        else if (employeeCount >= 2001) healthOfficerCount = 5;
+        else if (employeeCount >= 1001) healthOfficerCount = 4;
+        else if (employeeCount >= 501) healthOfficerCount = 3;
+        else if (employeeCount >= 201) healthOfficerCount = 2;
+        else healthOfficerCount = 1;
+
+        let healthOfficerDetails = `${healthOfficerCount}人以上`;
+        let isFullTimeRequired = false;
+        let isIndustrialHygieneRequired = false;
+
+        // Check for specific hazardous tasks that require full-time or industrial hygiene health officer
+        const hasSpecificHazardousTasksForHealthOfficer = selectedHazardousOperations.some(opId => {
+          const op = HAZARDOUS_OPERATIONS.find(h => h.id === opId);
+          return op && (op.requirements.includes('special_exam') || op.requirements.includes('specific_task_exam'));
+        });
+
+        if (employeeCount >= 1000 || (employeeCount >= 500 && hasSpecificHazardousTasksForHealthOfficer && employeeCount >= 30)) {
+          isFullTimeRequired = true;
+        }
+        if (employeeCount >= 500 && hasSpecificHazardousTasksForHealthOfficer && employeeCount >= 30) {
+          isIndustrialHygieneRequired = true;
+        }
+
+        if (isFullTimeRequired) {
+          healthOfficerDetails += '（うち1名は専任）';
+        }
+        if (isIndustrialHygieneRequired) {
+          healthOfficerDetails += '（うち1名は衛生工学衛生管理者免許取得者）';
+        }
+
+        newResults.personnel.push({
+          name: '衛生管理者',
+          description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する全ての事業場で、衛生管理者${healthOfficerDetails}の選任が義務付けられています。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
+          icon: <ShieldCheck className="text-yellow-500" />
+        });
+      }
+
+      // 安全管理者 (Safety Officer)
+      if (employeeCount >= 50 && requiresSafetyOfficerByIndustry(employeeCount, industryType)) {
+        newResults.personnel.push({
+          name: '安全管理者',
+          description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する特定の業種（${INDUSTRIES.find(ind => ind.id === industryType)?.name}）の事業場で選任義務があります。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
+          icon: <HardHat className="text-orange-500" />
+        });
+      }
+
+      // 安全衛生推進者・衛生推進者 (Safety and Health Promoter / Health Promoter)
+      if (employeeCount >= 10 && employeeCount < 50) {
+        const isSafetyHealthPromoterIndustry = isHazardousSafetyIndustry(industryType);
+        if (isSafetyHealthPromoterIndustry) {
+          newResults.personnel.push({
+            name: '安全衛生推進者',
+            description: `常時10人以上50人未満の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する特定の業種（${INDUSTRIES.find(ind => ind.id === industryType)?.name}）の事業場で選任義務があります。安全管理と衛生管理の両方を担当します。`,
+            icon: <Lightbulb className="text-teal-500" />
+          });
+        } else {
+          newResults.personnel.push({
+            name: '衛生推進者',
+            description: `常時10人以上50人未満の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する特定の業種以外の事業場（${INDUSTRIES.find(ind => ind.id === industryType)?.name}）で選任義務があります。衛生管理に関する業務のみを担当します。`,
+            icon: <Lightbulb className="text-teal-500" />
+          });
+        }
+      }
+
+      // 総括安全衛生管理者 (General Safety and Health Manager)
+      if (requiresGeneralSafetyHealthManagerByIndustry(employeeCount, industryType)) {
+        newResults.personnel.push({
+          name: '総括安全衛生管理者',
+          description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する事業場で、事業を実質的に統括管理する者を1名以上選任し、安全衛生管理全般の指揮をとらせる義務があります。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
+          icon: <Building className="text-indigo-500" />
+        });
+      }
+
+      // 作業主任者 (Operations Chief)
+      const hasOperationsChiefRequiredTasks = selectedHazardousOperations.some(opId =>
+        HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('operations_chief')
+      );
+      if (hasOperationsChiefRequiredTasks) {
+        const relevantTasks = selectedHazardousOperations
+          .filter(opId => HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.requirements.includes('operations_chief'))
+          .map(opId => HAZARDOUS_OPERATIONS.find(h => h.id === opId)?.name);
+
+        newResults.personnel.push({
+          name: '作業主任者',
+          description: `特定の危険作業（例: ${relevantTasks.join(', ')}）を行う場合、その作業の区分に応じて作業主任者の選任が義務付けられています。特定の資格（免許または技能講習修了）が必要です。`,
+          icon: <Factory className="text-gray-600" />
+        });
+      }
+
+      // 安全衛生責任者 (Safety and Health Manager - for mixed work sites)
+      const isConstructionOrShipbuilding = industryType === 'construction' || industryType === 'shipbuilding';
+      const isTunnelBridgePressureWork = selectedHazardousOperations.some(opId => ['tunnel_excavation', 'steel_bridge_erection', 'concrete_bridge_erection', 'high_pressure_indoor'].includes(opId));
+
+      if (isConstructionOrShipbuilding && employeeCount >= 50) { // Assuming employeeCount here refers to total workers on site
+        newResults.personnel.push({
+          name: '安全衛生責任者',
+          description: `建設業または造船業（特定事業）の混在作業で、元方事業者と関係請負人の労働者の合計が常時50人以上の場合に選任が必要です。この労働者数にはパート・アルバイト等も含まれます。`,
+          icon: <Users className="text-blue-600" />
+        });
+      } else if (isTunnelBridgePressureWork && employeeCount >= 30) { // Assuming employeeCount here refers to total workers on site
+        newResults.personnel.push({
+          name: '安全衛生責任者',
+          description: `ずい道（トンネル）建設、一定の橋梁の建設、圧気工法による作業を行う仕事で、労働者数が30人以上の場合に選任が必要です。この労働者数にはパート・アルバイト等も含まれます。`,
+          icon: <Users className="text-blue-600" />
+        });
+      }
+
+
+      setResults(newResults);
+    };
+
+    calculateRequirements();
+  }, [employeeCount, industryType, hasHazardousOperations, selectedHazardousOperations]);
+
+  const handleHazardousOperationChange = (e) => {
+    const { value, checked } = e.target;
+    setSelectedHazardousOperations(prev =>
+      checked ? [...prev, value] : prev.filter(op => op !== value)
+    );
+  };
+
+  const hazardousOpsSpecialExam = HAZARDOUS_OPERATIONS.filter(op => op.requirements.includes('special_exam') || op.requirements.includes('specific_task_exam'));
+  const hazardousOpsOperationsChief = HAZARDOUS_OPERATIONS.filter(op => op.requirements.includes('operations_chief'));
+
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-inter text-gray-800 flex flex-col items-center">
+      {/* Header */}
+      <header className="w-full bg-white shadow-md p-4 flex justify-center items-center rounded-b-xl">
+        <a href="https://workplace-healthcare.com/" target="_blank" rel="noopener noreferrer" className="text-lg sm:text-xl font-bold text-blue-700 hover:text-blue-900 transition-colors duration-200 flex items-center">
+          <Stethoscope className="mr-2" size={24} />
+          D2C産業医
+        </a>
+      </header>
+
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 sm:p-10 my-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-8">
+          <Stethoscope className="inline-block mr-3 text-blue-600" size={36} />
+          産業保健要件 簡易確認アプリ
+        </h1>
+
+        {/* Input Section */}
+        <div className="space-y-6 mb-10">
+          {/* Employee Count Input */}
+          <div className="bg-blue-50 p-5 rounded-xl shadow-inner">
+            <label htmlFor="employeeCount" className="block text-lg font-semibold text-blue-800 mb-3 flex items-center">
+              <Users className="mr-2" size={20} />
+              従業員数 (常時使用する労働者数)
+            </label>
+            <p className="text-sm text-blue-700 mb-2">
+              ※ 各事業所単位での従業員数を入力してください。<br />
+              ※ 「常時使用する労働者」には、正社員のほか、1週間の労働時間が同種の業務に従事する通常の労働者の4分の3以上であるパート・アルバイト等（1年以上の雇用見込みがある場合）も含まれます。おおむね2分の1以上である者も対象とすることが望ましいとされています。
+            </p>
+            <input
+              type="range"
+              id="employeeCount"
+              min="0"
+              max="3500"
+              step="1"
+              value={employeeCount}
+              onChange={(e) => setEmployeeCount(Number(e.target.value))}
+              className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <div className="text-center text-blue-700 font-medium mt-2">
+              {employeeCount} 人
+            </div>
+          </div>
+
+          {/* Industry Type Input */}
+          <div className="bg-green-50 p-5 rounded-xl shadow-inner">
+            <label htmlFor="industryType" className="block text-lg font-semibold text-green-800 mb-3 flex items-center">
+              <Briefcase className="mr-2" size={20} />
+              主要業種
+            </label>
+            <p className="text-sm text-green-700 mb-2">※ 各事業所における主要な業種を選択してください。</p>
+            <select
+              id="industryType"
+              value={industryType}
+              onChange={(e) => setIndustryType(e.target.value)}
+              className="w-full p-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200 ease-in-out bg-white text-gray-700 shadow-sm"
+            >
+              {INDUSTRIES.map(industry => (
+                <option key={industry.id} value={industry.id}>
+                  {industry.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Hazardous Operations Input */}
+          <div className="bg-red-50 p-5 rounded-xl shadow-inner">
+            <label className="block text-lg font-semibold text-red-800 mb-3 flex items-center">
+              <Droplet className="mr-2" size={20} />
+              有害業務の有無
+            </label>
+            <p className="text-sm text-red-700 mb-2">
+              ※ 選択した業種に関連性の高い業務に自動でチェックが入っています。貴社の状況に合わせて、内容をご確認の上、適宜チェックの追加・削除をお願いいたします。
+            </p>
+            <div className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                id="hasHazardousOperations"
+                checked={hasHazardousOperations}
+                onChange={(e) => {
+                  setHasHazardousOperations(e.target.checked);
+                  if (!e.target.checked) setSelectedHazardousOperations([]); // Clear selections if unchecked
+                }}
+                className="w-5 h-5 text-red-600 bg-red-100 border-red-300 rounded focus:ring-red-500"
+              />
+              <label htmlFor="hasHazardousOperations" className="ml-2 text-red-700 text-base">
+                有害業務に従事する労働者がいる
+              </label>
+            </div>
+
+            {hasHazardousOperations && (
+              <div className="space-y-4 mt-4">
+                {/* Section for Special Health Exams */}
+                {hazardousOpsSpecialExam.length > 0 && (
+                  <div className="bg-red-100 p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold text-red-700 mb-3 flex items-center">
+                      <FlaskConical className="mr-2" size={18} />
+                      特殊健康診断が必要な業務
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                      {hazardousOpsSpecialExam.map(op => (
+                        <div key={op.id} className="flex items-center">
+                          {/* Checkbox for Special Health Exam operations - consistent size with w-4 h-4 */}
+                          <input
+                            type="checkbox"
+                            id={`op-${op.id}`}
+                            value={op.id}
+                            checked={selectedHazardousOperations.includes(op.id)}
+                            onChange={handleHazardousOperationChange}
+                            className="w-4 h-4 text-red-600 bg-red-100 border-red-300 rounded focus:ring-red-500"
+                          />
+                          <label htmlFor={`op-${op.id}`} className="ml-2 text-sm text-gray-700">
+                            {op.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section for Operations Chief */}
+                {hazardousOpsOperationsChief.length > 0 && (
+                  <div className="bg-red-100 p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold text-red-700 mb-3 flex items-center">
+                      <Factory className="mr-2" size={18} />
+                      作業主任者の選任が必要な業務
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                      {hazardousOpsOperationsChief.map(op => (
+                        <div key={op.id} className="flex items-center">
+                          {/* Checkbox for Operations Chief operations - consistent size with w-4 h-4 */}
+                          <input
+                            type="checkbox"
+                            id={`op-${op.id}`}
+                            value={op.id}
+                            checked={selectedHazardousOperations.includes(op.id)}
+                            onChange={handleHazardousOperationChange}
+                            className="w-4 h-4 text-red-600 bg-red-100 border-red-300 rounded focus:ring-red-500"
+                          />
+                          <label htmlFor={`op-${op.id}`} className="ml-2 text-sm text-gray-700">
+                            {op.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Results Section */}
+        {results && (
+          <div className="mt-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-6 flex items-center justify-center">
+              <CheckCircle className="mr-3 text-green-600" size={30} />
+              判定結果
+            </h2>
+
+            {results.healthExams.length > 0 && (
+              <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                  <Stethoscope className="mr-2 text-blue-500" size={24} />
+                  健康診断の要件
+                </h3>
+                <ul className="space-y-4">
+                  {results.healthExams.map((exam, index) => (
+                    <li key={index} className="bg-blue-50 p-4 rounded-lg flex items-start shadow-sm">
+                      <div className="flex-shrink-0 mt-1 mr-3">
+                        {exam.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-blue-800 text-lg">{exam.name}</p>
+                        <p className="text-gray-700 text-sm">{exam.description}</p>
+                        <p className="text-gray-600 text-xs mt-1">
+                          <span className="font-semibold">対象:</span> {exam.target} |{' '}
+                          <span className="font-semibold">頻度:</span> {exam.frequency}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {results.personnel.length > 0 && (
+              <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                  <UserCheck className="mr-2" size={24} />
+                  産業保健関係者の選任要件
+                </h3>
+                <ul className="space-y-4">
+                  {results.personnel.map((person, index) => (
+                    <li key={index} className="bg-purple-50 p-4 rounded-lg flex items-start shadow-sm">
+                      <div className="flex-shrink-0 mt-1 mr-3">
+                        {person.icon}
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-800 text-lg">{person.name}</p>
+                        <p className="text-gray-700 text-sm">{person.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {results.notes.length > 0 && (
+              <div className="bg-yellow-50 rounded-xl shadow-md p-6 border border-yellow-200">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                  <BellRing className="mr-2" size={24} />
+                  補足事項
+                </h3>
+                <ul className="space-y-3">
+                  {results.notes.map((note, index) => (
+                    <li key={index} className="flex items-start">
+                      <div className="flex-shrink-0 mt-1 mr-3">
+                        {note.icon}
+                      </div>
+                      <p className="text-gray-700 text-sm">{note.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {results.healthExams.length === 0 && results.personnel.length === 0 && results.notes.length === 0 && (
+              <div className="bg-gray-100 rounded-xl shadow-md p-6 text-center text-gray-600">
+                <p>入力された情報に基づき、現時点では特定の産業保健要件は検出されませんでした。</p>
+                <p className="mt-2 text-sm">
+                  ただし、労働安全衛生法は事業場の状況に応じて様々な義務を課します。詳細については専門家にご相談ください。
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer className="w-full bg-gray-800 text-white p-6 mt-8 rounded-t-xl">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+          <div className="text-center sm:text-left">
+            <a href="https://workplace-healthcare.com/" target="_blank" rel="noopener noreferrer" className="text-lg sm:text-xl font-bold text-blue-300 hover:text-blue-100 transition-colors duration-200 flex items-center justify-center sm:justify-start">
+              <Stethoscope className="mr-2" size={24} />
+              D2C産業医
+            </a>
+            <p className="text-sm text-gray-400 mt-1">
+              産業保健の専門家をお探しならD2C産業医へ。
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center sm:justify-end space-x-4 text-sm">
+            {/* Updated links to open modals */}
+            <button onClick={() => setShowPrivacyPolicy(true)} className="text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">プライバシーポリシー</button>
+            <button onClick={() => setShowTermsOfService(true)} className="text-gray-300 hover:text-white transition-colors duration-200 focus:outline-none">利用規約</button>
+          </div>
+        </div>
+      </footer>
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyPolicy && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+            <button
+              onClick={() => setShowPrivacyPolicy(false)}
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 focus:outline-none"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: parseSimpleMarkdown(PRIVACY_POLICY_CONTENT) }}></div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms of Service Modal */}
+      {showTermsOfService && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+            <button
+              onClick={() => setShowTermsOfService(false)}
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-900 focus:outline-none"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: parseSimpleMarkdown(TERMS_OF_SERVICE_CONTENT) }}></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
