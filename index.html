@@ -388,49 +388,59 @@
         // Data for industries and hazardous operations
         const INDUSTRIES = [
             { id: 'other', name: 'その他の業種', type: 'other' },
+            // 一次産業
             { id: 'forestry', name: '林業', type: 'hazardous-safety' },
             { id: 'mining', name: '鉱業', type: 'hazardous-safety' },
+            // 建設業
             { id: 'construction', name: '建設業', type: 'hazardous-safety-construction' },
-            { id: 'transport', name: '運送業', type: 'hazardous-safety' },
-            { id: 'cleaning', name: '清掃業', type: 'hazardous-safety' },
-            { id: 'manufacturing', name: '製造業（物の加工業を含む）', type: 'hazardous-safety-manufacturing' },
+            // 製造業
+            { id: 'organic_chemical_manufacturing', name: '有機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
+            { id: 'petroleum_manufacturing', name: '石油製品製造業', type: 'hazardous-safety-manufacturing' },
+            { id: 'inorganic_chemical_manufacturing', name: '無機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
+            { id: 'chemical_fertilizer_manufacturing', name: '化学肥料製造業', type: 'hazardous-safety-manufacturing' },
+            { id: 'paper_pulp_manufacturing', name: '紙・パルプ製造業', type: 'hazardous-safety-manufacturing' },
+            { id: 'steel_manufacturing', name: '鉄鋼業', type: 'hazardous-safety-manufacturing' },
+            { id: 'shipbuilding', name: '造船業', type: 'hazardous-safety-shipbuilding' },
+            { id: 'manufacturing', name: '製造業（その他、特定の製造業を除く一般の製造業）', type: 'hazardous-safety-manufacturing' }, // 製造業グループの最後に移動
+            // インフラ・通信業
             { id: 'electricity', name: '電気業', type: 'hazardous-safety' },
             { id: 'gas', name: 'ガス業', type: 'hazardous-safety' },
             { id: 'heat_supply', name: '熱供給業', type: 'hazardous-safety' },
             { id: 'water_supply', name: '水道業', type: 'hazardous-safety' },
             { id: 'communication', name: '通信業', type: 'hazardous-safety' },
+            // 運輸・物流業
+            { id: 'transport', name: '運送業', type: 'hazardous-safety' },
+            { id: 'road_freight_transport', name: '道路貨物運送業', type: 'hazardous-safety-transport' },
+            { id: 'port_transport', name: '港湾運送業', type: 'hazardous-safety-transport' },
+            // 卸売・小売業
             { id: 'wholesale_general', name: '各種商品卸売業', type: 'hazardous-safety' },
             { id: 'wholesale_furniture', name: '家具・建具・じゅう器等卸売業', type: 'hazardous-safety' },
             { id: 'retail_general', name: '各種商品小売業', type: 'hazardous-safety' },
             { id: 'retail_furniture', name: '家具・建具・じゅう器小売業', type: 'hazardous-safety' },
             { id: 'retail_fuel', name: '燃料小売業', type: 'hazardous-safety' },
+            // サービス業
+            { id: 'cleaning', name: '清掃業', type: 'hazardous-safety' },
             { id: 'hotel', name: '旅館業', type: 'hazardous-safety' },
             { id: 'golf', name: 'ゴルフ場業', type: 'hazardous-safety' },
             { id: 'auto_repair', name: '自動車整備業', type: 'hazardous-safety' },
-            { id: 'machine_repair', type: 'hazardous-safety' },
-            { id: 'organic_chemical_manufacturing', name: '有機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
-            { id: 'petroleum_manufacturing', name: '石油製品製造業', type: 'hazardous-safety-manufacturing' },
-            { id: 'inorganic_chemical_manufacturing', name: '無機化学工業製品製造業', type: 'hazardous-safety-manufacturing' },
-            { id: 'chemical_fertilizer_manufacturing', type: 'hazardous-safety-manufacturing' },
-            { id: 'road_freight_transport', name: '道路貨物運送業', type: 'hazardous-safety-transport' },
-            { id: 'port_transport', name: '港湾運送業', type: 'hazardous-safety-transport' },
-            { id: 'paper_pulp_manufacturing', name: '紙・パルプ製造業', type: 'hazardous-safety-manufacturing' },
-            { id: 'steel_manufacturing', name: '鉄鋼業', type: 'hazardous-safety-manufacturing' },
-            { id: 'shipbuilding', name: '造船業', type: 'hazardous-safety-shipbuilding' },
+            { id: 'machine_repair', name: '機械修理業', type: 'hazardous-safety' },
+            { id: 'medical_services', name: '医療業', type: 'hazardous-safety' },
+            { id: 'social_welfare_services', name: '社会福祉事業', type: 'hazardous-safety' },
+            { id: 'waste_treatment', name: '廃棄物処理業', type: 'hazardous-safety' },
         ];
 
         const HAZARDOUS_OPERATIONS = [
-            { id: 'high_temp', name: '多量の高熱物体取扱業務、著しく暑熱な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'electricity', 'gas', 'heat_supply', 'water_supply', 'mining', 'construction'] },
-            { id: 'low_temp', name: '多量の低温物体取扱業務、著しく寒冷な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'wholesale_general', 'retail_general'] },
-            { id: 'heavy_lifting', name: '重量物を取り扱う作業', requirements: ['specific_task_exam'], related_industries: ['construction', 'transport', 'manufacturing', 'port_transport'] },
+            { id: 'high_temp', name: '多量の高熱物体取扱業務、著しく暑熱な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'electricity', 'gas', 'heat_supply', 'water_supply', 'mining', 'construction', 'medical_services', 'waste_treatment'] },
+            { id: 'low_temp', name: '多量の低温物体取扱業務、著しく寒冷な場所における業務', requirements: ['specific_task_exam'], related_industries: ['manufacturing', 'wholesale_general', 'retail_general', 'medical_services', 'social_welfare_services', 'waste_treatment'] },
+            { id: 'heavy_lifting', name: '重量物を取り扱う作業', requirements: ['specific_task_exam'], related_industries: ['construction', 'transport', 'manufacturing', 'port_transport', 'medical_services', 'social_welfare_services', 'waste_treatment'] },
             { id: 'high_place', name: '高所作業', requirements: ['specific_task_exam'], related_industries: ['construction', 'electricity', 'communication'] },
-            { id: 'radiation', name: 'ラジウム放射線、エックス線その他の有害放射線にさらされる業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['manufacturing', 'mining', 'electricity'] },
-            { id: 'dust', name: '有害な粉じんを取り扱う業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['mining', 'construction', 'manufacturing', 'paper_pulp_manufacturing', 'steel_manufacturing', 'cleaning'] },
+            { id: 'radiation', name: 'ラジウム放射線、エックス線その他の有害放射線にさらされる業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['manufacturing', 'mining', 'electricity', 'medical_services'] },
+            { id: 'dust', name: '有害な粉じんを取り扱う業務', requirements: ['special_exam', 'specific_task_exam'], related_industries: ['mining', 'construction', 'manufacturing', 'paper_pulp_manufacturing', 'steel_manufacturing', 'cleaning', 'waste_treatment'] },
             { id: 'high_pressure', name: '高気圧業務', requirements: ['special_exam'], related_industries: ['construction', 'mining'] },
-            { id: 'specified_chemical', name: '特定化学物質業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'organic_chemical_manufacturing', 'petroleum_manufacturing', 'inorganic_chemical_manufacturing', 'chemical_fertilizer_manufacturing', 'cleaning'] },
+            { id: 'specified_chemical', name: '特定化学物質業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'organic_chemical_manufacturing', 'petroleum_manufacturing', 'inorganic_chemical_manufacturing', 'chemical_fertilizer_manufacturing', 'cleaning', 'medical_services', 'waste_treatment'] },
             { id: 'asbestos', name: '石綿業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['construction', 'manufacturing'] },
             { id: 'lead', name: '鉛業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing'] },
-            { id: 'organic_solvent', name: '有機溶剤業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'auto_repair', 'machine_repair'] },
+            { id: 'organic_solvent', name: '有機溶剤業務', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'auto_repair', 'machine_repair', 'medical_services', 'waste_treatment'] },
             { id: 'dental_erosion', name: '歯牙酸蝕症（歯またはその支持組織に有害なガス・蒸気・粉じんを取り扱う業務）', requirements: ['special_exam'], related_industries: ['manufacturing'] },
             { id: 'arc_welding', name: '金属アーク溶接等作業', requirements: ['special_exam', 'operations_chief'], related_industries: ['manufacturing', 'construction', 'shipbuilding', 'steel_manufacturing', 'auto_repair', 'machine_repair'] },
             { id: 'high_pressure_indoor', name: '高圧室内作業', requirements: ['operations_chief'], related_industries: ['construction', 'mining'] },
@@ -450,7 +460,7 @@
             { id: 'stacking', name: 'はい作業', requirements: ['operations_chief'], related_industries: ['transport', 'wholesale_general', 'wholesale_furniture', 'retail_general', 'retail_furniture', 'retail_fuel', 'manufacturing'] },
             { id: 'ship_cargo_handling', name: '船内荷役作業', requirements: ['operations_chief'], related_industries: ['port_transport'] },
             { id: 'formwork_support_assembly', name: '型枠支保工組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
-            { id: 'scaffolding_assembly', name: '足場の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] }, /* Added name property */
+            { id: 'scaffolding_assembly', name: '足場の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
             { id: 'steel_frame_assembly', name: '建築物等の鉄骨の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
             { id: 'steel_bridge_erection', name: '鋼橋架設等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
             { id: 'wooden_building_assembly', name: '木造建築物の組立て等作業', requirements: ['operations_chief'], related_industries: ['construction'] },
@@ -519,6 +529,7 @@
                     return count >= 300;
                 case 'inorganic_chemical_manufacturing':
                 case 'chemical_fertilizer_manufacturing':
+                    return count >= 500;
                 case 'road_freight_transport':
                 case 'port_transport':
                     return count >= 500;
@@ -546,6 +557,9 @@
                 case 'golf':
                 case 'auto_repair':
                 case 'machine_repair':
+                case 'medical_services':
+                case 'social_welfare_services':
+                case 'waste_treatment':
                     return count >= 2000;
                 default:
                     return false;
@@ -560,6 +574,7 @@
                 case 'construction':
                 case 'transport':
                 case 'cleaning':
+                case 'waste_treatment':
                     return count >= 100;
                 case 'manufacturing':
                 case 'electricity':
@@ -567,9 +582,18 @@
                 case 'heat_supply':
                 case 'water_supply':
                 case 'communication':
+                case 'organic_chemical_manufacturing':
+                case 'petroleum_manufacturing':
+                case 'inorganic_chemical_manufacturing':
+                case 'chemical_fertilizer_manufacturing':
+                case 'paper_pulp_manufacturing':
+                case 'steel_manufacturing':
+                case 'shipbuilding':
+                case 'road_freight_transport':
+                case 'port_transport':
                     return count >= 300;
                 default:
-                    return count >= 1000; // Other industries
+                    return count >= 1000;
             }
         };
 
@@ -727,6 +751,8 @@
             if (employeeCount >= 50) {
                 let industrialDoctorCount = '';
                 let industrialDoctorType = '';
+                let isIndustrialDoctorRequired = true; // Flag to check if industrial doctor is required
+
                 if (employeeCount >= 3001) {
                     industrialDoctorCount = '2名以上';
                     industrialDoctorType = '専属産業医';
@@ -751,7 +777,8 @@
                     name: '産業医',
                     description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する事業場では、${industrialDoctorCount}の産業医を選任する必要があります。${industrialDoctorType}。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
                     icon: 'user-check',
-                    iconClass: 'text-purple-500'
+                    iconClass: 'text-purple-500',
+                    consultationLink: 'https://workplace-healthcare.com/' // Add consultation link
                 });
             } else {
                 newResults.notes.push({
@@ -832,7 +859,7 @@
             if (requiresGeneralSafetyHealthManagerByIndustry(employeeCount, industryType)) {
                 newResults.personnel.push({
                     name: '総括安全衛生管理者',
-                    description: `常時${employeeCount}人以上の労働者（パート・アルバイト等で一定の条件を満たす者を含む）を使用する事業場で、事業を実質的に統括管理する者を1名以上選任し、安全衛生管理全般の指揮をとらせる義務があります。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
+                    description: `常時${employeeCount}人以上の労働者（パート・アルバート等で一定の条件を満たす者を含む）を使用する事業場で、事業を実質的に統括管理する者を1名以上選任し、安全衛生管理全般の指揮をとらせる義務があります。選任後14日以内に労働基準監督署長へ届け出が必要です。`,
                     icon: 'building',
                     iconClass: 'text-indigo-500'
                 });
@@ -915,16 +942,30 @@
             if (results.personnel.length > 0) {
                 results.personnel.forEach(person => {
                     const li = document.createElement('li');
-                    li.className = 'bg-purple-50 p-4 rounded-lg flex items-start shadow-sm';
+                    // Use flex-col for mobile, flex-row for sm breakpoint and above
+                    li.className = 'bg-purple-50 p-4 rounded-lg flex items-start shadow-sm flex-col sm:flex-row sm:items-center'; 
                     li.innerHTML = `
-                        <div class="flex-shrink-0 mt-1 mr-3">
+                        <div class="flex-shrink-0 mt-1 mr-3 mb-2 sm:mb-0">
                             ${getLucideIconHtml(person.icon, `w-6 h-6 ${person.iconClass}`)}
                         </div>
-                        <div>
+                        <div class="flex-grow">
                             <p class="font-bold text-purple-800 text-lg">${person.name}</p>
                             <p class="text-gray-700 text-sm">${person.description}</p>
                         </div>
                     `;
+                    // Add consultation link if it's for Industrial Doctor
+                    if (person.name === '産業医' && person.consultationLink) {
+                        const consultationDiv = document.createElement('div');
+                        // Adjusted classes for better alignment and spacing
+                        consultationDiv.className = 'mt-3 sm:mt-0 sm:ml-4 flex-shrink-0 flex justify-center w-full sm:w-auto'; 
+                        consultationDiv.innerHTML = `
+                            <a href="${person.consultationLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-md text-white bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 transform hover:scale-105">
+                                D2C産業医へ相談する
+                                ${getLucideIconHtml('external-link', 'ml-2 w-5 h-5')}
+                            </a>
+                        `;
+                        li.appendChild(consultationDiv);
+                    }
                     personnelList.appendChild(li);
                 });
                 personnelResultsDiv.style.display = 'block';
@@ -960,6 +1001,8 @@
 
         // Initialize Industry Type Select Options
         const initIndustrySelect = () => {
+            // Clear existing options before populating
+            industryTypeSelect.innerHTML = '';
             INDUSTRIES.forEach(industry => {
                 const option = document.createElement('option');
                 option.value = industry.id;
